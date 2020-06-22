@@ -9,9 +9,6 @@ import torch.nn as nn
 import torch.nn.init as init
 
 
-NUM_CLASSES = 6
-
-
 class Linear(nn.Module):
     def __init__(self, in_features, out_features, bias=True):
         super(Linear, self).__init__()
@@ -186,22 +183,23 @@ def get_attn_pad_mask(seq_q, seq_k):
 
 
 class Transformer(nn.Module):
-    def __init__(self, fv='res18-128', dropout=0.1, NUM_HEADS=6, NUM_LAYERS=4):
+    def __init__(self, fv='res18-128', dropout=0.0, NUM_HEADS=6, NUM_LAYERS=4, hid_dim=32 ,num_classes=10):
         super(Transformer, self).__init__()
         if fv == 'matlab':
             MODEL_DIM = 1097
         else:
             MODEL_DIM = int(fv.split("-")[-1])
         # QUERY_DIM = 32
-        KEY_DIM = 32
-        VALUE_DIM = 32
+        KEY_DIM = hid_dim
+        VALUE_DIM = hid_dim
         FF_DIM = MODEL_DIM * 4
 
         self.layers = nn.ModuleList(
             [EncoderLayer(KEY_DIM, VALUE_DIM, MODEL_DIM, FF_DIM, NUM_HEADS,
                           dropout) for _ in range(NUM_LAYERS)])
 
-        self.proj = nn.Linear(MODEL_DIM, NUM_CLASSES)
+        self.proj = nn.Linear(MODEL_DIM, num_classes)
+
 
     def forward(self, enc_inputs):
         enc_outputs = enc_inputs

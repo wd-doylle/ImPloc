@@ -6,12 +6,11 @@ import torch
 
 class FineTuneModel(torch.nn.Module):
 
-    def __init__(self, original_model):
+    def __init__(self, original_model,layer):
         super(FineTuneModel, self).__init__()
-
         self.features = torch.nn.Sequential(
-                        *list(original_model.children())[:-2])
-
+                        *list(original_model.children())[:layer])
+        # print(list(original_model.children())[-4])
         for p in self.features.parameters():
             p.require_grad = False
 

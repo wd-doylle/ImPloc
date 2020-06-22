@@ -8,13 +8,13 @@ from util import torch_util
 
 # matlab fv use batchsize=64
 # batchsize = 256
-batchsize = 64
+batchsize = 16
 
 
-def transformer_bce(fv, size=0):
-    model_name = "transformer_%s_size%d_bce" % (fv, size)
+def transformer_bce(fv, fold=1,num_heads=2,hid_dim=32,num_layers=4):
+    model_name = "transformer_%s_bce_fold%d_numheads%d_hiddim%d-numlayers%d" % (fv, fold, num_heads, hid_dim, num_layers)
     criterion = torch.nn.BCELoss(reduction='none')
-    mtrain.train(fv, model_name, criterion, batchsize=batchsize)
+    mtrain.train(fv, model_name, criterion, batchsize=batchsize,fold=fold,num_heads=num_heads,hid_dim=hid_dim,num_layers=num_layers)
 
 
 def transformer_fec1(fv, size=0):
@@ -27,15 +27,6 @@ def transformer_bce_gbalance(fv, size=0):
     model_name = "transformer_%s_size%d_bce_gbalance" % (fv, size)
     criterion = torch.nn.BCELoss(reduction='none')
     mtrain.train(fv, model_name, criterion, balance=True, batchsize=batchsize)
-
-
-def transformer_bce_kfold(fv):
-    folds = list(range(1, 11))
-    for fold in folds:
-        model_name = "transformer_%s_bce_fold%d" % (fv, fold)
-        criterion = torch.nn.BCELoss(reduction='none')
-        mtrain.train(fv, model_name, criterion, balance=False,
-                     batchsize=batchsize, fold=fold)
 
 
 def fix_break_run():
@@ -69,6 +60,6 @@ if __name__ == "__main__":
     # transformer_fec1("res18-256")
     # transformer_fec1("res18-512")
     # transformer_fec5("matlab")
-    # transformer_bce_kfold("res18-512")
     # fix_break_run()
-    imgrnn_bce_kfold()
+    # imgrnn_bce_kfold()
+    pass

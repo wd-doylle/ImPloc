@@ -7,7 +7,6 @@ import numpy as np
 import math
 from util import constant as c
 
-NUM_CLASSES = 6
 
 label_map = {
     "Nuclear membrane": 0,
@@ -21,31 +20,11 @@ label_map = {
     "Endoplasmic Reticulum": 5
 }
 
-four_tissue_list = ['liver', 'breast', 'prostate', 'bladder']
-all_tissue_list = os.listdir(c.ALL_TISSUE_DIR)
 
 
-def get_gene_pics(gene, tissue_list=four_tissue_list):
-    pics = []
-    for t in tissue_list:
-        tp = os.path.join(c.TISSUE_DIR, t, "%s.txt" % gene)
-        if os.path.exists(tp):
-            with open(tp, 'r') as f:
-                pics.extend([l.strip("\n") for l in f.readlines()])
-    return pics
-
-
-def get_gene_list(size=1):
+def get_gene_list(fv):
     '''not consider train/val/test'''
-    gene_list = []
-    if size >= 0:
-        gene_list += get_enhanced_gene_list()
-    if size >= 1:
-        gene_list += get_supported_gene_list()
-    if size >= 2:
-        gene_list += get_approved_gene_list()
-
-    return gene_list
+    return [x.rsplit('.')[0] for x in os.listdir(os.path.join(c.FV_DIR,fv))]
 
 
 def get_balanced_gene_list(gene_list, size=0):
@@ -55,7 +34,7 @@ def get_balanced_gene_list(gene_list, size=0):
 def _label_ratio(gene_list, gene_label):
     '''return label_ratio & label_gene_list for current gene_list'''
     total = len(gene_list)
-    label_gene_list = [[] for _ in range(NUM_CLASSES)]
+    label_gene_list = [[] for _ in range(c.NUM_CLASSES)]
     for gene in gene_list:
         for l in gene_label[gene]:
             label_gene_list[l].append(gene)
@@ -96,7 +75,7 @@ def get_local_balanced_gene_list(gene_list, size=0):
     gene_list = [gene for gene in gene_list if gene in gene_label and
                  len(get_gene_pics(gene)) > 0]
     # for each label, get its gene list
-    label_gene_list = [[] for _ in range(NUM_CLASSES)]
+    label_gene_list = [[] for _ in range(c.NUM_CLASSES)]
     for gene in gene_list:
         for l in gene_label[gene]:
             label_gene_list[l].append(gene)
@@ -120,51 +99,15 @@ def get_local_balanced_gene_list(gene_list, size=0):
     return ret_list
 
 
-def get_enhanced_gene_list():
-    '''some gene marked as enhanced but do not have enhanced label'''
-    return [x for x in os.listdir(c.DATA_DIR)
-            if len(os.listdir(os.path.join(c.DATA_DIR, x)))]
+def load_gene_label():
+    return _load_label_from_file(c.TRAIN_LABEL_DIR)
 
-
-def get_supported_gene_list():
-    return [x for x in os.listdir(c.SUPP_DATA_DIR)
-            if len(os.listdir(os.path.join(c.SUPP_DATA_DIR, x)))]
-
-
-def get_approved_gene_list():
-    return [x for x in os.listdir(c.APPROVE_DATA_DIR)
-            if len(os.listdir(os.path.join(c.APPROVE_DATA_DIR, x)))]
-
-
-def load_gene_label(size=1):
-    if size == 0:
-        return load_enhanced_label()
-    elif size == 1:
-        return load_supported_label()
-    else:
-        return load_approved_label()
-
-
-def load_enhanced_label():
-    return _load_label_from_file("enhanced_label.txt")
-
-
-def load_supported_label():
-    return _load_label_from_file("supported_label.txt")
-
-
-def load_approved_label():
-    return _load_label_from_file("approved_label.txt")
-
-
-def _load_label_from_file(fname):
+def _load_label_from_file(label_file):
     d = {}
-    pardir = os.path.join(os.path.dirname(__file__), os.pardir)
-    label_file = os.path.join(pardir, "label", fname)
     with open(label_file, 'r') as f:
         for line in f.readlines():
-            gene, label = line.strip("\n").split("\t")
-            labels = [label_map[x] for x in label.split(",") if x]
+            gene, label = line.strip("\n").split(",")
+            labels = [int(x) for x in label.split(";") if x]
             if labels:
                 d[gene] = labels
     return d
@@ -252,7 +195,7 @@ def get_label_freq(size=1):
     ntrain = len(train_list)
 
     def onehot(l):
-        label = np.zeros(NUM_CLASSES)
+        label = np.zeros(c.NUM_CLASSES)
         for i in l:
             label[i] = 1
         return label
@@ -279,7 +222,7 @@ def label_stat(size=1):
     print("test num gene:", len(test_list))
 
     def onehot(l):
-        label = np.zeros(NUM_CLASSES)
+        label = np.zeros(c.NUM_CLASSES)
         for i in l:
             label[i] = 1
         return label

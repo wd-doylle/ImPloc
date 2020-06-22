@@ -8,7 +8,6 @@ import torch.nn.utils.rnn as utils_rnn
 import os
 import time
 import fvloader
-import matloader
 import tensorboardX
 from util import npmetrics
 from util import torch_util

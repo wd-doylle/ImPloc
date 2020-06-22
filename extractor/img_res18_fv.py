@@ -3,35 +3,47 @@
 
 import torch
 import torchvision
-import finetune
 import os
-import cv2
+import sys
+from PIL import Image
 import numpy as np
 import time
-import gpustat
+# import gpustat
 import threading
 import queue
 
+sys.path.append(os.path.dirname(__file__))
+import finetune
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 from util import constant as c
 
 
 # for enhanced level data
-DATA_DIR = c.QDATA_DIR
+DATA_DIR = c.TRAIN_IMG_DIR
 FV_DIR = c.FV_DIR
+NUM_THREADS = 1
+LAYER = {
+    128:-4,
+    256:-3,
+    512:-2
+}
+SAVE_DIR = None
+
+if not os.path.exists(FV_DIR):
+    os.mkdir(FV_DIR)
+
+# def get_gpu_usage(device=1):
+#     gpu_stats = gpustat.new_query()
+#     item = gpu_stats.jsonify()["gpus"][device]
+#     return item['memory.used'] / item['memory.total']
 
 
-def get_gpu_usage(device=1):
-    gpu_stats = gpustat.new_query()
-    item = gpu_stats.jsonify()["gpus"][device]
-    return item['memory.used'] / item['memory.total']
-
-
-def extract_image_fv(q, model):
+def extract_image_fv(q, model, save_dir):
 
     def _extract_image(image):
 
-        img = cv2.imread(image)
-        img = cv2.resize(img, (3000, 3000), interpolation=cv2.INTER_CUBIC)
+        img = Image.open(image)
+        # img = cv2.resize(img, (3000, 3000), interpolation=cv2.INTER_CUBIC)
         img = np.transpose(img, (2, 0, 1))
         img = np.expand_dims(img, axis=0)
         # return img
@@ -42,15 +54,15 @@ def extract_image_fv(q, model):
 
     while not q.empty():
 
-        while get_gpu_usage() > 0.9:
-            print("---gpu full---", get_gpu_usage())
-            time.sleep(1)
-            torch.cuda.empty_cache()
+        # while get_gpu_usage() > 0.9:
+        #     print("---gpu full---", get_gpu_usage())
+        #     time.sleep(1)
+        #     torch.cuda.empty_cache()
 
         gene = q.get()
         print("---extract -----", gene)
         gene_dir = os.path.join(DATA_DIR, gene)
-        outpath = os.path.join(FV_DIR, "%s.npy" % gene)
+        outpath = os.path.join(save_dir,"%s.pkl" % gene)
         if os.path.exists(outpath):
             print("------already extracted---------", gene)
             continue
@@ -59,27 +71,30 @@ def extract_image_fv(q, model):
                for p in os.listdir(gene_dir)
                if os.path.splitext(p)[-1] == ".jpg"]
         if pds:
-            value = np.concatenate(pds, axis=0)
+            value = torch.cat(pds,dim=0)
+            # print(value.shape)
             print("----save-----", outpath)
-            np.save(outpath, value)
+            torch.save(value, outpath)
 
 
-def extract():
+def extract(fv_dim=128):
     q = queue.Queue()
     for gene in os.listdir(DATA_DIR):
         q.put(gene)
-
     resnet18 = torchvision.models.resnet18(pretrained=True)
-    model = finetune.FineTuneModel(resnet18)
+    model = finetune.FineTuneModel(resnet18,layer=LAYER[fv_dim])
     for param in model.parameters():
         param.requires_grad = False
     model.share_memory()
     model.cuda()
     # print(model)
 
+    save_dir = os.path.join(FV_DIR,"res18-%d"%fv_dim)
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
     jobs = []
-    for i in range(8):
-        p = threading.Thread(target=extract_image_fv, args=(q, model))
+    for i in range(NUM_THREADS):
+        p = threading.Thread(target=extract_image_fv, args=(q, model,save_dir))
         jobs.append(p)
         p.daemon = True
         p.start()
@@ -88,24 +103,5 @@ def extract():
         j.join()
 
 
-def test_mem():
-    # 3000x3000 gpu mem is ok for res18 when batch=1
-    resnet18 = torchvision.models.resnet18(pretrained=True)
-    model = finetune.FineTuneModel(resnet18)
-    for param in model.parameters():
-        param.requires_grad = False
-    model.share_memory()
-    model.cuda()
-
-    image = os.path.join(DATA_DIR, "ENSG00000278845", "51543_A_1_2.jpg")
-    img = cv2.imread(image)
-    img = np.transpose(img, (2, 0, 1))
-    inputs = np.expand_dims(img, axis=0)
-    tinputs = torch.from_numpy(inputs).type(torch.cuda.FloatTensor)
-    value = model(tinputs)
-    print(value)
-
-
 if __name__ == "__main__":
-    # test_mem()
     extract()

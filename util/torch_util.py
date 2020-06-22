@@ -4,65 +4,23 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from util import npmetrics
-from util import torchmetrics
+from sklearn import metrics
 
 
-NUM_CLASSES = 6
+
 epsilon = 1e-8
 
 
-def torch_metrics(gt, predict, writer, step, mode="val"):
-    ex_subset_acc = npmetrics.example_subset_accuracy(gt, predict)
-    ex_acc = npmetrics.example_accuracy(gt, predict)
-    ex_precision = npmetrics.example_precision(gt, predict)
-    ex_recall = npmetrics.example_recall(gt, predict)
-    ex_f1 = npmetrics.compute_f1(ex_precision, ex_recall)
+def torch_metrics(gt, predict, predict_bin, writer, step, mode="val"):
+    auc = metrics.roc_auc_score(gt,predict,average='macro')
+    macro_f1 = metrics.f1_score(gt,predict_bin,average='macro')
+    micro_f1 = metrics.f1_score(gt,predict_bin,average='micro')
 
-    lab_acc_macro = npmetrics.label_accuracy_macro(gt, predict)
-    lab_precision_macro = npmetrics.label_precision_macro(gt, predict)
-    lab_recall_macro = npmetrics.label_recall_macro(gt, predict)
-    lab_f1_macro = npmetrics.compute_f1(lab_precision_macro, lab_recall_macro)
-
-    lab_acc_micro = npmetrics.label_accuracy_micro(gt, predict)
-    lab_precision_micro = npmetrics.label_precision_micro(gt, predict)
-    lab_recall_micro = npmetrics.label_recall_micro(gt, predict)
-    lab_f1_micro = npmetrics.compute_f1(lab_precision_micro, lab_recall_micro)
-
-    writer.add_scalar("%s subset acc" % mode, ex_subset_acc, step)
-    writer.add_scalar("%s example acc" % mode, ex_acc, step)
-    writer.add_scalar("%s example precision" % mode, ex_precision, step)
-    writer.add_scalar("%s example recall" % mode, ex_recall, step)
-    writer.add_scalar("%s example f1" % mode, ex_f1, step)
-
-    writer.add_scalar("%s label acc macro" % mode,
-                      lab_acc_macro, step)
-    writer.add_scalar("%s label precision macro" % mode,
-                      lab_precision_macro, step)
-    writer.add_scalar("%s label recall macro" % mode,
-                      lab_recall_macro, step)
-    writer.add_scalar("%s label f1 macro" % mode, lab_f1_macro, step)
-
-    writer.add_scalar("%s label acc micro" % mode,
-                      lab_acc_micro, step)
-    writer.add_scalar("%s label precision micro" % mode,
-                      lab_precision_micro, step)
-    writer.add_scalar("%s label recall micro" % mode,
-                      lab_recall_micro, step)
-    writer.add_scalar("%s label f1 micro" % mode,
-                      lab_f1_micro, step)
-
-    sl_acc = npmetrics.single_label_accuracy(gt, predict)
-    sl_precision = npmetrics.single_label_precision(gt, predict)
-    sl_recall = npmetrics.single_label_recall(gt, predict)
-    for i in range(NUM_CLASSES):
-        writer.add_scalar("%s sl_%d_acc" % (mode, i),
-                          sl_acc[i], step)
-        writer.add_scalar("%s sl_%d_precision" % (mode, i),
-                          sl_precision[i], step)
-        writer.add_scalar("%s sl_%d_recall" % (mode, i),
-                          sl_recall[i], step)
-    return lab_f1_macro
+    writer.add_scalar("%s auc" % mode, auc, step)
+    writer.add_scalar("%s macro_f1" % mode, macro_f1, step)
+    writer.add_scalar("%s micro_f1" % mode, micro_f1, step)
+    
+    return macro_f1
 
 
 def threshold_tensor_batch(pd, base=0.5):
@@ -70,7 +28,9 @@ def threshold_tensor_batch(pd, base=0.5):
     p_max = torch.max(pd, dim=1)[0]
     pivot = torch.cuda.FloatTensor([base]).expand_as(p_max)
     threshold = torch.min(p_max, pivot)
-    pd_threshold = torch.ge(pd, threshold.unsqueeze(dim=1))
+    flags = torch.ge(pd, threshold.unsqueeze(dim=1))
+    pd_threshold = torch.zeros_like(pd)
+    pd_threshold[flags] = 1
     return pd_threshold
 
 
