@@ -45,7 +45,7 @@ def finetune_model():
     random.shuffle(image_loader)
     N = len(image_loader)
     train_loader, val_loader = image_loader[:int(N*val_portion)], image_loader[int(N*val_portion):]
-    epochs = 10
+    epochs = 1000
     for e in range(1,epochs+1):
         model.train()
         print("------epoch--------", e)
@@ -72,13 +72,13 @@ def finetune_model():
     return model
 
 
-def get_data_loader(batch_size=8):
+def get_data_loader(batch_size=4):
     items = []
     gene_label = datautil.load_gene_label()
-    for gene in os.listdir(c.TRAIN_IMG_DIR)[:2]:
+    for gene in os.listdir(c.TRAIN_IMG_DIR):
         gene_dir = os.path.join(c.TRAIN_IMG_DIR, gene)
         labels = gene_label[gene]
-        for p in os.listdir(gene_dir):
+        for p in os.listdir(gene_dir)[:1]:
             img = Image.open(os.path.join(gene_dir,p))
             img = np.transpose(img, (2, 0, 1))
             img = np.expand_dims(img, axis=0)

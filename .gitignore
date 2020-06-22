@@ -2,3 +2,4 @@
 *.pth
 *.ipynb_checkpoints
 *.pyc
+*.tfevents*
