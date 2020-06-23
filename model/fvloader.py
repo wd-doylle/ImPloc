@@ -32,7 +32,7 @@ def load_kfold_train_data(fold=1, fv='res18-128'):
 
 
 def load_kfold_val_data(fold=1, fv='res18-128'):
-    train_genes, val_genes = kfold_split(fold)
+    train_genes, val_genes = kfold_split(fold,fv=fv)
     return _load_data(val_genes, fv=fv)
 
 

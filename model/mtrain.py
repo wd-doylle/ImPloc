@@ -125,6 +125,7 @@ def train(fv, model_name, criterion, balance=False,
 
             genes, nimgs, labels, timesteps = item
             inputs = nimgs.cuda()
+            # print(inputs.shape)
             gt = labels.cuda()
             pd = model(inputs)
 
