@@ -12,7 +12,7 @@ NUM_CLASSES = 10
 
 
 def kfold_split(fold=1, fv='res18-128'):
-    candidate_genes = datautil.get_gene_list(fv)
+    candidate_genes = datautil.get_gene_list()
     # candidate_genes = candidate_genes[:int(len(candidate_genes) * 0.9)]
     cl = len(candidate_genes)
     vl = cl // 10
@@ -27,12 +27,12 @@ def kfold_split(fold=1, fv='res18-128'):
 
 
 def load_kfold_train_data(fold=1, fv='resnet18-128'):
-    train_genes, val_genes = kfold_split(fold,fv=fv)
+    train_genes, val_genes = kfold_split(fold)
     return _load_data(train_genes, fv=fv)
 
 
 def load_kfold_val_data(fold=1, fv='resnet18-128'):
-    train_genes, val_genes = kfold_split(fold,fv=fv)
+    train_genes, val_genes = kfold_split(fold)
     return _load_data(val_genes, fv=fv)
 
 
@@ -44,7 +44,7 @@ def _handle_load_test(gene,fv='res-128'):
     genef = os.path.join(c.FV_DIR,fv, "%s.pkl" % gene)
     nimg = torch.load(genef).cpu()
     timestep = nimg.shape[0]
-    return (gene, nimg,-1, timestep)
+    return (gene, nimg,torch.zeros(NUM_CLASSES), timestep)
 
 
 def _handle_load(gene, d, fv='res18-128'):

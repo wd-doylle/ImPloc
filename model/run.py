@@ -5,7 +5,6 @@ import torch
 import os
 from model import mtrain
 from model import mpredict
-from model import img_rnn
 from util import torch_util
 
 # matlab fv use batchsize=64

@@ -11,7 +11,6 @@ import numpy as np
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir,'util'))
 from util import torch_util
-from util import npmetrics
 from util import constant as c
 sys.path.append(os.path.dirname(__file__))
 from transformer import Transformer

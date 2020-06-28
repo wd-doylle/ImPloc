@@ -9,9 +9,9 @@ from util import constant as c
 
 
 
-def get_gene_list(fv):
+def get_gene_list():
     '''not consider train/val/test'''
-    return [x.rsplit('.')[0] for x in os.listdir(c.TRAIN_IMG_DIR)]
+    return list(os.listdir(c.TRAIN_IMG_DIR))
 
 
 def load_gene_label():
@@ -29,7 +29,7 @@ def _load_label_from_file(label_file):
 
 
 def get_test_gene_list():
-    return [x.rsplit('.')[0] for x in os.listdir(c.TEST_IMG_DIR)]
+    return list(os.listdir(c.TEST_IMG_DIR))
 
 
 def shuffle(items, batch=128):
