@@ -19,9 +19,9 @@ from util import constant as c
 
 
 # for enhanced level data
-DATA_DIR = c.TRAIN_IMG_DIR
+DATA_DIR = c.TEST_IMG_DIR
 FV_DIR = c.FV_DIR
-NUM_THREADS = 1
+NUM_THREADS = 2
 LAYER = {
     128:-4,
     256:-3,
@@ -69,7 +69,7 @@ def extract_image_fv(q, model, save_dir):
 
         pds = [_extract_image(os.path.join(gene_dir, p))
                for p in os.listdir(gene_dir)
-               if os.path.splitext(p)[-1] == ".jpg"]
+               if os.path.splitext(p)[-1] in [".jpg",".jpeg"]]
         if pds:
             value = torch.cat(pds,dim=0)
             # print(value.shape)
@@ -77,8 +77,10 @@ def extract_image_fv(q, model, save_dir):
             torch.save(value, outpath)
 
 
-def extract(fv_dim=128):
+def extract(fv_dim=128,stage='train'):
     q = queue.Queue()
+    global DATA_DIR
+    DATA_DIR = c.TRAIN_IMG_DIR if stage == 'train' else c.TEST_IMG_DIR
     for gene in os.listdir(DATA_DIR):
         q.put(gene)
     resnet18 = torchvision.models.resnet18(pretrained=True)
@@ -89,7 +91,7 @@ def extract(fv_dim=128):
     model.cuda()
     # print(model)
 
-    save_dir = os.path.join(FV_DIR,"res18-%d"%fv_dim)
+    save_dir = os.path.join(FV_DIR,"img-resnet18-%d"%fv_dim)
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     jobs = []

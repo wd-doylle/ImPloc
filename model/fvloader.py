@@ -26,23 +26,25 @@ def kfold_split(fold=1, fv='res18-128'):
     return train_genes, val_genes
 
 
-def load_kfold_train_data(fold=1, fv='res18-128'):
+def load_kfold_train_data(fold=1, fv='resnet18-128'):
     train_genes, val_genes = kfold_split(fold,fv=fv)
     return _load_data(train_genes, fv=fv)
 
 
-def load_kfold_val_data(fold=1, fv='res18-128'):
+def load_kfold_val_data(fold=1, fv='resnet18-128'):
     train_genes, val_genes = kfold_split(fold,fv=fv)
     return _load_data(val_genes, fv=fv)
 
 
-def load_kfold_test_data(fold=1, fv='res18-128'):
-    return load_test_data(size=0, fv=fv)
+def load_test_data(fv='res18-128'):
+    gene_list = datautil.get_test_gene_list()
+    return [_handle_load_test(gene,fv=fv) for gene in gene_list]
 
-
-def load_test_data(size=1, fv='res18-128'):
-    gene_list = datautil.get_test_gene_list(size)
-    return _load_data(gene_list, fv=fv)
+def _handle_load_test(gene,fv='res-128'):
+    genef = os.path.join(c.FV_DIR,fv, "%s.pkl" % gene)
+    nimg = torch.load(genef).cpu()
+    timestep = nimg.shape[0]
+    return (gene, nimg,-1, timestep)
 
 
 def _handle_load(gene, d, fv='res18-128'):

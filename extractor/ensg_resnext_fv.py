@@ -81,7 +81,7 @@ def extract(fv_dim=128):
     q = queue.Queue()
     for gene in os.listdir(DATA_DIR):
         q.put(gene)
-    model = finetune.finetune_model('resnet18')
+    model = finetune.finetune_model('resnext')
     model = finetune.FineTuneModel(model,layer=LAYER[fv_dim])
     for param in model.parameters():
         param.requires_grad = False
@@ -89,7 +89,7 @@ def extract(fv_dim=128):
     model.cuda()
     # print(model)
 
-    save_dir = os.path.join(FV_DIR,"ensg-resnet18-%d"%fv_dim)
+    save_dir = os.path.join(FV_DIR,"ensg-resnext-%d"%fv_dim)
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     jobs = []

@@ -30,33 +30,40 @@ class FineTuneModel(torch.nn.Module):
         return f.view(f.size(0), -1)
 
 
-def finetune_model():
+def finetune_model(arch):
     root_dir = os.path.dirname(__file__)
     model_dir = os.path.join(root_dir,'finetune')
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)
-    model_path = os.path.join(model_dir,'resnet-18.pth')
-
-    model = torchvision.models.resnet18()
-    model.fc = torch.nn.Linear(512,c.NUM_CLASSES)
+    if arch == 'resnet18':
+        model_path = os.path.join(model_dir,'resnet-18.pth')
+        model = torchvision.models.resnet18(pretrained=True)
+        model.fc = torch.nn.Linear(512,c.NUM_CLASSES)
+        train_loader = get_data_loader(stage='train')
+        val_loader = get_data_loader(stage='val')
+    elif arch == 'resnext':
+        model_path = os.path.join(model_dir,'resnext.pth')
+        model = torch.hub.load('pytorch/vision:v0.6.0', 'resnext50_32x4d', pretrained=True)
+        model.fc = torch.nn.Linear(2048,c.NUM_CLASSES)
+        train_loader = get_data_loader(stage='train',batch_size=1)
+        val_loader = get_data_loader(stage='val',batch_size=1)
     model = torch.nn.Sequential(model,torch.nn.Sigmoid())
     model.to('cuda')
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path))
         return list(model.children())[0]
-    print("Finetuning ResNet-18...")
+    print("Finetuning %s..."%arch)
     criterion = torch.nn.BCELoss(reduction='mean')
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=0.001, weight_decay=0.001)
+    
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.5,
             patience=50, min_lr=1e-5)
     writer = SummaryWriter(model_dir)
-    train_loader = list(get_train_loader())
-    val_loader = list(get_val_loader())
-    epochs = 1000
+    epochs = 100
     for e in range(1,epochs+1):
-        model.train()
+        model.eval()
         print("------epoch--------", e)
         train_losses = []
         for imgs,labels in train_loader:
@@ -85,13 +92,15 @@ def finetune_model():
     return list(model.children())[0]
 
 
-def get_train_loader(batch_size=4):
+def get_data_loader(batch_size=4,stage='train',val_portion=0.1):
     items = []
     gene_label = datautil.load_gene_label()
     for gene in os.listdir(c.TRAIN_IMG_DIR):
         gene_dir = os.path.join(c.TRAIN_IMG_DIR, gene)
         labels = gene_label[gene]
-        for p in os.listdir(gene_dir)[:2]:
+        dirs = os.listdir(gene_dir)
+        dirs = dirs[:int(len(dirs)*val_portion)] if stage == 'train' else dirs[int(len(dirs)*val_portion):]
+        for p in dirs:
             img = Image.open(os.path.join(gene_dir,p))
             img = np.transpose(img, (2, 0, 1))
             img = np.expand_dims(img, axis=0)
@@ -99,28 +108,7 @@ def get_train_loader(batch_size=4):
             label = torch.zeros((1,c.NUM_CLASSES))
             label[0,gene_label[gene]] = 1
             items.append([input,label])
-    
-    batched = [items[i:i+batch_size] for i in range(0, len(items), batch_size)]
-    for batch in batched:
-        (inputs, labels) = zip(*batch)
-        yield(torch.cat(inputs),torch.cat(labels))
-
-def get_val_loader(batch_size=4):
-    items = []
-    gene_label = datautil.load_gene_label()
-    for gene in os.listdir(c.TRAIN_IMG_DIR):
-        gene_dir = os.path.join(c.TRAIN_IMG_DIR, gene)
-        labels = gene_label[gene]
-        for p in os.listdir(gene_dir)[2:3]:
-            img = Image.open(os.path.join(gene_dir,p))
-            img = np.transpose(img, (2, 0, 1))
-            img = np.expand_dims(img, axis=0)
-            input = torch.from_numpy(img).type(torch.FloatTensor)
-            label = torch.zeros((1,c.NUM_CLASSES))
-            label[0,gene_label[gene]] = 1
-            items.append([input,label])
-    
-    batched = [items[i:i+batch_size] for i in range(0, len(items), batch_size)]
-    for batch in batched:
-        (inputs, labels) = zip(*batch)
-        yield(torch.cat(inputs),torch.cat(labels))
+            if len(items)>=batch_size:
+                (inputs, labels) = zip(*items)
+                items = []
+                yield(torch.cat(inputs),torch.cat(labels))
